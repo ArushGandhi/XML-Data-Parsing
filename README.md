@@ -1,7 +1,6 @@
 # Parsing XML Data in R
 
-- Identified the parent-child relations of a vast XML database containing publication data of a journal
-- Extracted node values using XML package in R and filling the values in separate columns to be able to convert the XML format into two tibbles
-- Joined these tibbles with using the dpylr package
-- Carried out exploratory data analysis on the table using graphs and visulizations
-- Converted the XML file into a text file to perform text analytics for getting deeper insights into the data  
+- This code takes you through the process involved in converting an XML data into sturctured data(tibbles)
+- Functions are built to extract the child from its root and then put through a loop to fill up the tibble in order
+- Further data exploration is carried out using dplyr functions and building various plots
+- The XML file is then converted into a text file to carry out regular expression analysis to find specific words in the data
