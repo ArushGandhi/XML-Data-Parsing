@@ -1,0 +1,465 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+```{r}
+
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(XML)
+library(RCurl)
+library(lubridate)
+
+```
+Parsing the XML file in R 
+```{r}
+fileURL <- "http://da5020.weebly.com/uploads/8/6/5/9/8659576/pubmedsample.jun18.xml"
+xData <- getURL(fileURL)
+xmlDoc <- xmlTreeParse(xData)
+root <- xmlRoot(xmlDoc)  #To get the root node 
+xmlName(root)   #Name of the root node 
+xmlSize(root)   #Number of root childern
+
+
+#Creating two empty tibbles with column names
+
+publication <- tibble(PMID = character(),
+                  ISSN = character(),
+                  publication_year = numeric(),
+                  date_completed = date(),
+                  date_revised = date(),
+                  number_of_authors = numeric(),
+                  publication_type = character(), 
+                  title_of_article = character())
+                  
+                  
+journal <- tibble(ISSN = character(),
+               medium = character(),
+               publication_year = numeric(),
+               publication_season = character(),
+               language = character(),
+               journal_title = character())
+
+
+
+#For PMID
+
+parsePMID <- function(listingNode){
+x <- xmlValue(listingNode[["MedlineCitation"]][["PMID"]])
+if (!is.nan(x))
+ {x <- x}
+  else
+    {x <- "NA"}
+  return(x)
+}
+
+#To fill the PMID column in publication tibble
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  x <- parsePMID(currListing)
+ publication[i,]$PMID <- x
+}
+
+
+# For ISSN
+parseISSN <- function(listingNode){
+issn <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["ISSN"]])
+if (!is.nan(issn))
+ {issn <- issn}
+  else
+    {issn <- "NA"}
+ return(issn)
+}
+
+#To fill the ISSN column in publication tibble
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  issn <- parseISSN(currListing)
+ publication[i,]$ISSN <- issn
+}
+
+
+#For publication_year
+ parsepublication_year <- function(listingNode){
+PY <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["JournalIssue"]][["PubDate"]][["Year"]])
+if (!is.nan(PY))
+{
+  PY <- PY
+  }
+   else{
+     PY <- "NA"
+   }
+   return(PY)
+ }
+ 
+#To fill the publicatioj year column in publication tibble 
+for (i in 1:177)
+  {
+   options(warn=-1)
+   currListing <- root[[i]]
+   PY <- parsepublication_year(currListing)
+   publication[i,]$publication_year <- PY
+}
+ 
+ 
+# For date completed(in one field)
+parsedate_completed <- function(listingNode){
+Year <- xmlValue(listingNode[["MedlineCitation"]][["DateCompleted"]][["Year"]])
+Month <- xmlValue(listingNode[["MedlineCitation"]][["DateCompleted"]][["Month"]])
+Day <- xmlValue(listingNode[["MedlineCitation"]][["DateCompleted"]][["Day"]])
+DC <- ymd(paste(Year, Month, Day))
+DC <- as.character(DC)
+  if (!is.nan(DC)){
+    (DC <- DC)
+   } else {
+      (DC <- "NA")
+     }
+   return(DC)
+}
+#To fill the date completed column in publication tibble 
+ for (i in 1:177)
+   {
+   options(warn=-1)
+   currListing <- root[[i]]
+   DC <- parsedate_completed(currListing)
+   publication[i,]$date_completed <- DC
+   publication$date_completed <- ymd(publication$date_completed)
+ }
+
+
+ # For date revised(in one field)
+parsedate_revised <- function(listingNode){
+year <- xmlValue(listingNode[["MedlineCitation"]][["DateRevised"]][["Year"]])
+month <- xmlValue(listingNode[["MedlineCitation"]][["DateRevised"]][["Month"]])
+day <- xmlValue(listingNode[["MedlineCitation"]][["DateRevised"]][["Day"]])
+DR <- ymd(paste(year, month, day))
+DR <- as.character(DR)
+if (!is.nan(DR)){
+    (DR <- DR)
+  } else {
+       (DR <- "NA")
+     }
+  return(DR)
+}
+
+#To get the date revied in publication tibble
+for (i in 1:177)
+  {
+ options(warn=-1)
+ currListing <- root[[i]]
+DR <- parsedate_revised(currListing)
+  publication[i,]$date_revised<- DR
+  publication$date_revised <- ymd(publication$date_revised)
+}
+# For the number of authors 
+parsenumber_of_authors <- function(listingNode){
+Auth <- xmlSize(listingNode[["MedlineCitation"]][["Article"]][["AuthorList"]])
+if (!is.nan(Auth)){
+(Auth <- Auth)
+} else {
+(Auth <- "NA")
+}
+return(Auth)
+}
+
+#To put the number of authors values in publication tibble
+for (i in 1:177)
+{
+options(warn=-1)
+currListing <- root[[i]]
+Auth <- parsenumber_of_authors(currListing)
+publication[i,]$number_of_authors <- Auth
+}
+
+
+# For publication type
+parsepublication_type <- function(listingNode){
+Pub <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["PublicationTypeList"]][["PublicationType"]],recursive = FALSE)
+if (!is.nan(Pub)){
+(Pub <- Pub)
+} else {
+(Pub <- "NA")
+ }
+return(Pub)
+}
+
+#To get the publication type in publication tibble
+for (i in 1:177)
+{
+options(warn=-1)
+currListing <- root[[i]]
+Pub <- parsepublication_type(currListing)
+publication[i,]$publication_type <- Pub
+}
+
+
+# For the title of article 
+parsetile <- function(listingnode){
+titleart <- xmlValue(listingnode[["MedlineCitation"]][["Article"]][["ArticleTitle"]])
+if (!is.nan(titleart)){
+(titleart <- titleart)
+} else {
+(titleart <- "NA")
+ }
+return(titleart)
+}
+for (i in 1:177)
+{
+options(warn=-1)
+currListing <- root[[i]]
+titleart <- parsetile(currListing)
+publication[i,]$ttitle_of_article <- titleart
+}
+```
+
+
+```{r}
+head(publication)
+
+```
+
+```{r}
+#To fill the journal tibble
+
+#For ISSN
+parseISSN <- function(listingNode){
+issn <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["ISSN"]])
+if (!is.nan(issn))
+ {issn <- issn}
+  else
+    {issn <- "NA"}
+ return(issn)
+}
+
+#To fill the ISSN column in journal tibble
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  issn <- parseISSN(currListing)
+ journal[i,]$ISSN <- issn
+}
+
+
+# For Medium
+parsemedium <- function(listingNode){
+medium <- xmlAttrs(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["JournalIssue"]])   #To get the attribute
+if (!is.nan(medium))
+ {medium <- medium}
+  else
+    {medium <- "NA"}
+ return(medium)
+ }
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  medium <- parsemedium(currListing)
+ journal[i,]$medium <- medium
+}
+
+#For the publication year
+parsepublication_year <- function(listingNode){
+PY <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["JournalIssue"]][["PubDate"]][["Year"]])
+if (!is.nan(PY))
+{
+  PY <- PY
+  }
+   else{
+     PY <- "NA"
+   }
+   return(PY)
+ }
+ 
+#To fill the publication year column in publication tibble 
+for (i in 1:177)
+  {
+   options(warn=-1)
+   currListing <- root[[i]]
+   PY <- parsepublication_year(currListing)
+   journal[i,]$publication_year <- PY
+}
+
+
+# For publication season
+parsepublication_season<- function(listingNode){
+PS <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["JournalIssue"]][["PubDate"]][["Season"]])
+if (!is.nan(PS))
+ {PS <- PS}
+  else
+    {PS <- "NA"}
+ return(PS)
+ }
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  PS <- parsepublication_season(currListing)
+ journal[i,]$publication_season <- PS
+}
+
+
+# For language
+parselanguage<- function(listingNode){
+L <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Language"]])
+if (!is.nan(L))
+ {L <- L}
+  else
+    {L <- "NA"}
+ return(L)
+ }
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  L <- parselanguage(currListing)
+ journal[i,]$language <- L
+}
+
+
+# For journal title
+parsejournal_title<- function(listingNode){
+JT <- xmlValue(listingNode[["MedlineCitation"]][["Article"]][["Journal"]][["Title"]])
+  if (!is.nan(JT))
+ {JT <- JT}
+  else
+    {JT <- "NA"}
+ return(JT)
+ }
+for (i in 1:177)
+{
+ options(warn=-1)
+  currListing <- root[[i]]
+  JT <- parsejournal_title(currListing)
+ journal[i,]$journal_title <- JT
+}
+head(journal)
+
+```
+
+```{r}
+#Linking the tibbles, using ISSN as the key.
+
+Link <- inner_join(publication, journal, by="ISSN")
+
+head(Link)
+
+
+```
+
+3. Line graph of the number of publications per year
+
+```{r}
+
+df <- publication %>%
+  filter(publication_year != "NA") %>%
+  group_by(publication_year) %>%
+  summarise(total= n())%>%
+  ggplot( mapping=aes(x=publication_year,y= total, group = 1,color= "#CCOOOO")) +
+geom_line(size=1.2) +
+labs(title = "Number of Publications per year") +
+  xlab("Publication Year")+
+  ylab("Number of Articles")+
+  theme(axis.text.x=element_text( angle=90))+
+  theme(legend.position = "none")+
+   geom_text(aes(label =total, color="blue" ))
+df
+
+```
+4. Histogram of the number of publication per journal.
+```{r}
+
+#Using the linked tibble
+Link2 <- inner_join(journal, publication, by="ISSN")
+a <- Link2%>%
+  filter(ISSN != "NA") %>%
+  group_by(ISSN)%>%
+ggplot(mapping=aes(x= ISSN, color="#000099"))+ 
+  geom_histogram(stat = "count")+
+  labs(theme= "Number of publications per journal")+
+  ylab("Number of publications")+
+  theme(legend.position = "none")
+  
+  
+  library(plotly)
+  
+
+ ggplotly(a)
+
+
+```
+
+5. Article with the most number of authors
+```{r}
+
+Authors <- Link%>%
+  select(title_of_article,journal_title, number_of_authors)
+Authors[which.max(Authors$number_of_authors),]
+  
+```
+6. The average number of authors for articles.
+```{r}
+
+ publication %>% 
+summarise(Average=mean(number_of_authors))
+
+```
+
+7. The longest and the shortest time periods between date completed and date revised.
+```{r}
+date <- publication %>% 
+  select(date_completed, date_revised) %>% 
+  mutate(Difference = date_revised - date_completed)
+date$Difference <- as.numeric(date$Difference)
+L <- date%>%
+  filter(Difference >= 0)
+LongestTimePeriod <- L[which.max(L$Difference),]
+ShortestTimePeriod <- L[which.min(L$Difference),]
+
+LongestTimePeriod
+ShortestTimePeriod
+
+
+
+```
+
+8.  Number of different languages the articles are published in PubMed.
+
+```{r}
+
+Link %>% 
+  select(language) %>%
+  group_by(language) %>%
+  summarise()%>%
+  nrow()
+
+
+```
+
+9. 
+```{r}
+#Converting the XML file to a text file in R
+
+txt <- xmlParse(xData, asText = TRUE)
+
+#To get the abstract text fields, using XPath
+
+Path <- xpathSApply(txt, '//Abstract',xmlValue)
+
+NumbOfArticles <- length(grep( "in [Vv]itro|[Vv]irus|[Tt]ransmission|[Cc]linical [Ss]tudy|[Dd]rug( |-)[Rr]esistance|[Dd]rug [Rr]esist(a|e)nt",Path))
+
+NumbOfArticles
+
+
+```
+
